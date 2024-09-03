@@ -1,0 +1,129 @@
+# Copyright 2024 Dynatrace LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Bi-weekly build, test and publish Release
+
+on:
+#  push:
+#    branches:
+#      - main
+  schedule:
+    # At 01:00 on Friday
+#    - cron: '0 1 * * 5'
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+env:
+#  The first run of the action should be scheduled for a date that falls on the same weekday as specified in the cron.
+#  For example, if the cron is set to run on Fridays, the first run should be on a Friday.
+#  Additionally, during every second week of the bi-weekly cycle, the action will be skipped. The cron time can be set to any time of the day.
+#  FIRST_RUN_DATE: 2024-09-06
+  FIRST_RUN_DATE: 2024-09-01
+
+jobs:
+  biweekly-build-test-and-publish-release:
+    runs-on: ubuntu-latest
+    outputs:
+      weekIndex: ${{ steps.biWeeklyPublish.outputs.weekIndex }}
+      newTagValue:  ${{ steps.biWeeklyPublish.outputs.newTagValue }}
+    steps:
+      - name: Checkout source code of the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Bi-weekly publish
+        id: biWeeklyPublish
+        run: |
+          currentDate=$(date +%Y-%m-%d)
+          start=$(date -d ${{ env.FIRST_RUN_DATE }} +%s)
+          end=$(date -d $currentDate +%s)
+          #weekDiff=$(((end - start) / 60 / 60 / 24 / 7))
+          weekDiff=$(((end - start) / 60 / 60)) #every 1 hour
+          weekIndex=$((weekDiff % 2))
+          echo "weekIndex = $weekIndex" >> "$GITHUB_OUTPUT"
+          echo "FIRST_RUN_DATE: ${{ env.FIRST_RUN_DATE }}" >> $GITHUB_STEP_SUMMARY
+          echo "currentDate: $currentDate" >> $GITHUB_STEP_SUMMARY
+          echo "weekDiff: $weekDiff" >> $GITHUB_STEP_SUMMARY
+          echo "weekIndex: $weekIndex" >> $GITHUB_STEP_SUMMARY
+          if [ $weekIndex -eq 0 ]; then
+            echo "Second week -> starting action" >> $GITHUB_STEP_SUMMARY
+            git config --global user.email "ci-bot@example.com"
+            git config --global user.name "CI Bot"
+            currentTagValue=$(git describe --abbrev=0 --tags)
+            minor=$(echo $currentTagValue | cut -d '.' -f 2)
+            newTagValue=1.$(($minor+1)).0
+            git tag -a $newTagValue -m "Bi-weekly tagging with $newTagValue"
+          else
+            echo "First week -> ignoring action" >> $GITHUB_STEP_SUMMARY
+          fi
+  action:
+    if: ${{ needs.weekIndex.outputs.weekIndex == 0 }}
+    runs-on: ubuntu_latest
+    needs:
+      - biweekly-build-test-and-publish-release
+    steps:
+      - run: echo "Started publish action"
+
+      - name: Checkout source code of the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set environment variables
+        uses: ./.github/actions/set-environment-variables
+        with:
+          build-type: Release
+
+      - name: Build docker image
+        uses: ./.github/actions/build-docker-image
+
+      - name: Configure
+        uses: ./.github/actions/configure
+
+      - name: Build
+        uses: ./.github/actions/build
+
+      - name: Unit tests
+        uses: ./.github/actions/unit-tests
+
+      - name: Component tests
+        uses: ./.github/actions/component-tests
+
+      - name: Create artifact directory
+        run: mkdir ${{ env.ARTIFACT_PATH }}
+
+      - name: Move license to artifact directory
+        run: mv ${{ github.workspace }}/LICENSE ${{ env.ARTIFACT_PATH }}/LICENSE
+
+      - name: Move third party licenses to artifact directory
+        run: mv ${{ env.BUILD_PATH }}/licenses ${{ env.ARTIFACT_PATH }}/third_party
+
+      - name: Move protobuf model to artifact directory
+        run: mv ${{ env.BUILD_PATH }}/libebpfdiscoveryproto/ebpfdiscoveryproto ${{ env.ARTIFACT_PATH }}/ebpfdiscoveryproto
+
+      - name: Move binaries to artifact directory
+        run: mv ${{ env.BUILD_PATH }}/bin ${{ env.ARTIFACT_PATH }}/bin
+
+      - name: Remove test binaries from artifact directory
+        run: find ${{ env.ARTIFACT_PATH }}/* -name 'test*' -exec rm {} \;
+
+      - name: Zip artifact directory contents
+        run: |
+          cd ${{ env.ARTIFACT_PATH }}
+          zip -r ${{ env.ARTIFACT_VERSION }}.zip .
+
+      - name: Publish zip to GitHub OCI registry
+        run: |
+          cd ${{ env.ARTIFACT_PATH }}
+          printf "%s" ${{ secrets.GITHUB_TOKEN }} | docker run --rm -i -v $(pwd):/workspace ghcr.io/oras-project/oras:v1.0.1 push -u ${{ github.actor }} --password-stdin ${{ env.GITHUB_OCI_REGISTRY_ADDRESS }}/${{ env.LOWERCASE_REPOSITORY_NAME }}-linux-x86_64:${{ env.ARTIFACT_VERSION }},latest ${{ env.ARTIFACT_VERSION }}.zip
