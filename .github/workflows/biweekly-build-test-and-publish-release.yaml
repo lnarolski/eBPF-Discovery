@@ -70,6 +70,8 @@ jobs:
   action:
     if: ${{ needs.weekIndex.outputs.weekIndex == 0 }}
     runs-on: ubuntu_latest
+    permissions:
+      packages: write
     needs:
       - biweekly-build-test-and-publish-release
     steps:

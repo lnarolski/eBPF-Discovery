@@ -23,6 +23,8 @@ on:
 jobs:
   master-push-build-test-and-publish-release:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     steps:
       - name: Checkout source code of the repository
         uses: actions/checkout@v4
