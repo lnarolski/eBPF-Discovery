@@ -1,4 +1,4 @@
-# Copyright 2023 Dynatrace LLC
+# Copyright 2024 Dynatrace LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Build, test and publish Release
+name: Master push build, test and publish Release
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  build-test-and-publish-release:
+  master-push-build-test-and-publish-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code of the repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Set Git identity
+        run: |
+          git config --global user.email "ci-bot@example.com"
+          git config --global user.name "CI Bot"
+
+      - name: Set new version tag
+        run: |
+          currentTagValue=$(git describe --abbrev=0 --tags)
+          minor=$(echo $currentTagValue | cut -d '.' -f 2)
+          patch=$(echo $currentTagValue | cut -d '.' -f 3)
+          newTagValue=1.$(($minor)).$((patch+1))
+          git tag -a $newTagValue -m "Master push tagging with $newTagValue"
 
       - name: Set environment variables
         uses: ./.github/actions/set-environment-variables
