@@ -18,7 +18,7 @@ on:
   schedule:
     # At 01:00 on Friday
     #- cron: '0 1 * * 5'
-    - cron: '0/30 * * * *'
+    - cron: '0 0/1 * * *'
   workflow_dispatch:
 
 env:
@@ -47,16 +47,16 @@ jobs:
           start=$(date -d ${{ env.FIRST_RUN_DATE }} +%s)
           end=$(date -d $currentDate +%s)
           #weekDiff=$(((end - start) / 60 / 60 / 24 / 7))
-          weekDiff=$(((end - start) / 60))
+          weekDiff=$(((end - start) / 60 / 60))
           #weekIndex=$((weekDiff % 2))
-          weekIndex=$((weekDiff % 60))
+          weekIndex=$((weekDiff % 24))
           echo "weekIndex = $weekIndex" >> "$GITHUB_STEP_SUMMARY"
           echo "FIRST_RUN_DATE: ${{ env.FIRST_RUN_DATE }}" >> $GITHUB_STEP_SUMMARY
           echo "currentDate: $currentDate" >> $GITHUB_STEP_SUMMARY
           echo "weekDiff: $weekDiff" >> $GITHUB_STEP_SUMMARY
           echo "weekIndex: $weekIndex" >> $GITHUB_STEP_SUMMARY
           #if [ $weekIndex -eq 0 ]; then
-          if [ "$weekIndex" -ge 0 ] && [ "$weekIndex" -le 59 ]; then
+          if [ "$weekIndex" -eq 21 ] || [ "$weekIndex" -eq 9 ]; then
             echo "Second week -> starting action" >> $GITHUB_STEP_SUMMARY
             git config --global user.email "ci-bot@example.com"
             git config --global user.name "CI Bot"
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [biweekly-build-test-and-publish-release]
     #if: ${{ needs.biweekly-build-test-and-publish-release.outputs.weekIndex == 0 }}  
-    if: ${{ needs.biweekly-build-test-and-publish-release.outputs.weekIndex >= 0 && needs.biweekly-build-test-and-publish-release.outputs.weekIndex <= 59 }}
+    if: ${{ needs.biweekly-build-test-and-publish-release.outputs.weekIndex == 21 || needs.biweekly-build-test-and-publish-release.outputs.weekIndex == 9 }}
     steps:
       - name: Checkout source code of the repository
         uses: actions/checkout@v4
