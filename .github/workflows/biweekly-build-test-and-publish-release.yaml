@@ -20,7 +20,7 @@ on:
 #      - main
   schedule:
     # At 01:00 on Friday
-#    - cron: '0 1 * * 5'
+    #- cron: '0 1 */14 * 5'
     - cron: '0 * * * *'
   workflow_dispatch:
 
@@ -34,16 +34,13 @@ env:
 jobs:
   biweekly-build-test-and-publish-release:
     runs-on: ubuntu-latest
-    outputs:
-      weekIndex: ${{ steps.biWeeklyPublish.outputs.weekIndex }}
-      newTagValue:  ${{ steps.biWeeklyPublish.outputs.newTagValue }}
     steps:
       - name: Checkout source code of the repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Bi-weekly publish
-        id: biWeeklyPublish
+
+      - name: Bi-weekly new tag
         run: |
           currentDate=$(date +%Y-%m-%d)
           start=$(date -d ${{ env.FIRST_RUN_DATE }} +%s)
@@ -51,7 +48,7 @@ jobs:
           #weekDiff=$(((end - start) / 60 / 60 / 24 / 7))
           weekDiff=$(((end - start) / 60 / 60)) #every 1 hour
           weekIndex=$((weekDiff % 2))
-          echo "weekIndex = $weekIndex" >> "$GITHUB_OUTPUT"
+          echo "weekIndex = $weekIndex" >> "$GITHUB_STEP_SUMMARY"
           echo "FIRST_RUN_DATE: ${{ env.FIRST_RUN_DATE }}" >> $GITHUB_STEP_SUMMARY
           echo "currentDate: $currentDate" >> $GITHUB_STEP_SUMMARY
           echo "weekDiff: $weekDiff" >> $GITHUB_STEP_SUMMARY
@@ -64,68 +61,14 @@ jobs:
             minor=$(echo $currentTagValue | cut -d '.' -f 2)
             newTagValue=1.$(($minor+1)).0
             git tag -a $newTagValue -m "Bi-weekly tagging with $newTagValue"
+            echo "New tag value: $newTagValue" >> $GITHUB_STEP_SUMMARY
+            git push origin $newTagValue
           else
             echo "First week -> ignoring action" >> $GITHUB_STEP_SUMMARY
+            exit 0
           fi
-  action:
-    if: ${{ needs.weekIndex.outputs.weekIndex == 0 }}
-    runs-on: ubuntu_latest
-    permissions:
-      packages: write
-    needs:
-      - biweekly-build-test-and-publish-release
-    steps:
-      - run: echo "Started publish action"
 
-      - name: Checkout source code of the repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Build, test and publish Release
+        uses: ./.github/workflows/build-test-and-publish-release.yaml
 
-      - name: Set environment variables
-        uses: ./.github/actions/set-environment-variables
-        with:
-          build-type: Release
 
-      - name: Build docker image
-        uses: ./.github/actions/build-docker-image
-
-      - name: Configure
-        uses: ./.github/actions/configure
-
-      - name: Build
-        uses: ./.github/actions/build
-
-      - name: Unit tests
-        uses: ./.github/actions/unit-tests
-
-      - name: Component tests
-        uses: ./.github/actions/component-tests
-
-      - name: Create artifact directory
-        run: mkdir ${{ env.ARTIFACT_PATH }}
-
-      - name: Move license to artifact directory
-        run: mv ${{ github.workspace }}/LICENSE ${{ env.ARTIFACT_PATH }}/LICENSE
-
-      - name: Move third party licenses to artifact directory
-        run: mv ${{ env.BUILD_PATH }}/licenses ${{ env.ARTIFACT_PATH }}/third_party
-
-      - name: Move protobuf model to artifact directory
-        run: mv ${{ env.BUILD_PATH }}/libebpfdiscoveryproto/ebpfdiscoveryproto ${{ env.ARTIFACT_PATH }}/ebpfdiscoveryproto
-
-      - name: Move binaries to artifact directory
-        run: mv ${{ env.BUILD_PATH }}/bin ${{ env.ARTIFACT_PATH }}/bin
-
-      - name: Remove test binaries from artifact directory
-        run: find ${{ env.ARTIFACT_PATH }}/* -name 'test*' -exec rm {} \;
-
-      - name: Zip artifact directory contents
-        run: |
-          cd ${{ env.ARTIFACT_PATH }}
-          zip -r ${{ env.ARTIFACT_VERSION }}.zip .
-
-      - name: Publish zip to GitHub OCI registry
-        run: |
-          cd ${{ env.ARTIFACT_PATH }}
-          printf "%s" ${{ secrets.GITHUB_TOKEN }} | docker run --rm -i -v $(pwd):/workspace ghcr.io/oras-project/oras:v1.0.1 push -u ${{ github.actor }} --password-stdin ${{ env.GITHUB_OCI_REGISTRY_ADDRESS }}/${{ env.LOWERCASE_REPOSITORY_NAME }}-linux-x86_64:${{ env.ARTIFACT_VERSION }},latest ${{ env.ARTIFACT_VERSION }}.zip
