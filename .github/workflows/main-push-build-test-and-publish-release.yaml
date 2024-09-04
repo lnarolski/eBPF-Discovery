@@ -46,4 +46,4 @@ jobs:
           git push origin $newTagValue
 
       - name: Build, test and publish Release
-        uses: ./.github/workflows/build-test-and-publish-release.yaml
+        uses: ./.github/actions/build-test-and-publish-release
