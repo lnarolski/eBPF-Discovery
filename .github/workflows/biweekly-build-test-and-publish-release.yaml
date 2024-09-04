@@ -96,4 +96,3 @@ jobs:
         run: |
           echo "This step will always run for debugging"
           echo "Week index from previous job: ${{ needs.biweekly-build-test-and-publish-release.outputs.weekIndex }}"
-          echo "Type of weekIndex: ${{ type_of(needs.biweekly-build-test-and-publish-release.outputs.weekIndex) }}"
