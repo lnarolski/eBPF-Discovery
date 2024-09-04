@@ -86,3 +86,14 @@ jobs:
         uses: ./.github/actions/build-test-and-publish-release
         with:
           pat-github-token: ${{ secrets.PAT_GITHUB_TOKEN }}
+
+  always_run:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [biweekly-build-test-and-publish-release]
+    steps:
+      - name: Always run this step
+        run: |
+          echo "This step will always run for debugging"
+          echo "Week index from previous job: ${{ needs.biweekly-build-test-and-publish-release.outputs.weekIndex }}"
+          echo "Type of weekIndex: ${{ type_of(needs.biweekly-build-test-and-publish-release.outputs.weekIndex) }}"
