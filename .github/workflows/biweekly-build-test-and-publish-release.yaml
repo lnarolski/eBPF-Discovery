@@ -18,7 +18,7 @@ on:
   schedule:
     # At 01:00 on Friday
     #- cron: '0 1 * * 5'
-    - cron: '30 * * * *'
+    - cron: '0/10 * * * *'
   workflow_dispatch:
 
 env:
