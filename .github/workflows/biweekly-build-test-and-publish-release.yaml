@@ -58,8 +58,8 @@ jobs:
           #if [ $weekIndex -eq 0 ]; then
           if [ "$weekIndex" -eq 21 ] || [ "$weekIndex" -eq 9 ]; then
             echo "Second week -> starting action" >> $GITHUB_STEP_SUMMARY
-            git config --global user.email "ci-bot@example.com"
-            git config --global user.name "CI Bot"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git config --global user.name "github-actions[bot]"
             currentTagValue=$(git describe --abbrev=0 --tags)
             minor=$(echo $currentTagValue | cut -d '.' -f 2)
             newTagValue=1.$(($minor+1)).0
