@@ -42,7 +42,7 @@ jobs:
           patch=$(echo $currentTagValue | cut -d '.' -f 3)
           newTagValue=1.$(($minor)).$((patch+1))
           git tag -a $newTagValue -m "Main push tagging with $newTagValue"
-          echo "Current tag value: $currentTagValue\n New tag value: $newTagValue" >> $GITHUB_STEP_SUMMARY
+          echo "Current tag value: $currentTagValue New tag value: $newTagValue" >> $GITHUB_STEP_SUMMARY
           git push origin $newTagValue
 
       - name: Build, test and publish Release
