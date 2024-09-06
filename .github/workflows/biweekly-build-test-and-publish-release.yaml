@@ -34,11 +34,6 @@ jobs:
     outputs:
       weekIndex: ${{ steps.biWeeklyTagCreate.outputs.weekIndex }}
     steps:
-      - name: Checkout source code of the repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Bi-weekly new tag
         id: biWeeklyTagCreate
         run: |
@@ -64,7 +59,7 @@ jobs:
             minor=$(echo $currentTagValue | cut -d '.' -f 2)
             newTagValue=1.$(($minor+1)).0
             git tag -a $newTagValue -m "Bi-weekly tagging with $newTagValue"
-            echo "New tag value: $newTagValue" >> $GITHUB_STEP_SUMMARY
+            echo "Current tag value: $currentTagValue New tag value: $newTagValue" >> $GITHUB_STEP_SUMMARY
             git push origin $newTagValue
           else
             echo "First week -> ignoring action" >> $GITHUB_STEP_SUMMARY
