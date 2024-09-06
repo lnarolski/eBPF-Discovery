@@ -56,7 +56,7 @@ jobs:
           echo "weekDiff: $weekDiff" >> $GITHUB_STEP_SUMMARY
           echo "weekIndex: $weekIndex" >> $GITHUB_STEP_SUMMARY
           #if [ $weekIndex -eq 0 ]; then
-          if [ "$weekIndex" -eq 21 ] || [ "$weekIndex" -eq 13 ]; then
+          if [ "$weekIndex" -eq 21 ] || [ "$weekIndex" -eq 9 ]; then
             echo "Second week -> starting action" >> $GITHUB_STEP_SUMMARY
             git config --global user.email "github-actions[bot]@users.noreply.github.com"
             git config --global user.name "github-actions[bot]"
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [biweekly-build-test-and-publish-release]
     #if: ${{ needs.biweekly-build-test-and-publish-release.outputs.weekIndex == 0 }}  
-    if: ${{ needs.biweekly-build-test-and-publish-release.outputs.weekIndex == 21 || needs.biweekly-build-test-and-publish-release.outputs.weekIndex == 13 }}
+    if: ${{ needs.biweekly-build-test-and-publish-release.outputs.weekIndex == 21 || needs.biweekly-build-test-and-publish-release.outputs.weekIndex == 9 }}
     steps:
       - name: Checkout source code of the repository
         uses: actions/checkout@v4
