@@ -97,6 +97,6 @@ jobs:
       - name: "Build, test and publish Release"
         uses: ./.github/actions/build-test-and-publish-release
         with:
-          pat-github-token: ${{ secrets.GITHUB_TOKEN }}
+          pat-github-token: ${{ secrets.PAT_GITHUB_TOKEN }}
           arch: ${{ matrix.arch }}
           timestamp: ${{ needs.biweekly-create-timestamp.outputs.timestamp }}
